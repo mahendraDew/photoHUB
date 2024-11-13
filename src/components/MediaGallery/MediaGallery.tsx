@@ -15,13 +15,15 @@ import { CloudinaryResource } from '@/types/Cloudinary';
 
 import { useResources } from '@/app/hooks/use-resources';
 interface MediaGalleryProps {
-  resources: Array<CloudinaryResource>
+  resources: Array<CloudinaryResource>;
+  tag?: string;
 }
 
-const MediaGallery = ({ resources: initialResources }: MediaGalleryProps) => {
+const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) => {
 
   const { resources }  = useResources({
-    initialResources
+    initialResources,
+    tag: tag
   });
 
   console.log(resources);
