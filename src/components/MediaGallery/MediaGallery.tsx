@@ -10,29 +10,21 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { CldImage } from 'next-cloudinary';
-import { useQuery } from '@tanstack/react-query';
 
-interface CloudinaryResource {
-  height: number;
-  width: number;
-  public_id: string;
-  secure_url: string;
-}
+import { CloudinaryResource } from '@/types/Cloudinary';
 
+import { useResources } from '@/app/hooks/use-resources';
 interface MediaGalleryProps {
   resources: Array<CloudinaryResource>
 }
 
-const MediaGallery = ({ resources }: MediaGalleryProps) => {
+const MediaGallery = ({ resources: initialResources }: MediaGalleryProps) => {
 
-  const { data } = useQuery({
-    queryKey: ['resources'],
-    queryFn: async ()=>{
-      const { data } = await fetch('/api/resources').then(r=>r.json());
-      return data;
-    }
-  })
-  console.log(data);
+  const { resources }  = useResources({
+    initialResources
+  });
+
+  console.log(resources);
 
   const [selected, setSelected] = useState<Array<string>>([]);
   const [creation, setCreation] = useState();
