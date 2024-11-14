@@ -2,7 +2,7 @@
 
 import {  useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Blend, ChevronLeft, ChevronDown, Crop, Info, Pencil, Trash2, Wand2, Image, Ban, PencilRuler, ScissorsSquare, ScissorsSquareDashedBottom, Square, RectangleHorizontal, RectangleVertical } from 'lucide-react';
+import { Blend, ChevronLeft, ChevronDown, Crop, Info, Pencil, Trash2, Wand2, Image, Ban, PencilRuler, ScissorsSquare, ScissorsSquareDashedBottom, Square, RectangleHorizontal, RectangleVertical, UndoIcon } from 'lucide-react';
 
 import Container from '@/components/Container';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 
 
 import { CloudinaryResource } from '@/types/Cloudinary';
-import { CldImageProps } from 'next-cloudinary';
+import { CldImage, CldImageProps } from 'next-cloudinary';
 import CldImageWrapper from '../CldImageWrapper';
 
 interface Deletion {
@@ -33,6 +33,7 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
   // Enhancement states: 
   const [enhancement, setEnhancement] = useState<string>();
   const [crop, setCrop] = useState<string>();
+  const [filter, setFilter] = useState<string>();
   
   type Transformations = Omit<CldImageProps, "src" | "alt">
   const transformations:Transformations = {};
@@ -68,6 +69,12 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
       source: true,
       type: 'fill'
     }
+  }
+
+  if ( typeof filter === 'string' && ['grayscale','sepia'].includes(filter) ){
+    transformations[filter as keyof Transformations] = true
+  }else if ( typeof filter === 'string' && ['sizzle'].includes(filter) ){
+    transformations.art = filter;
   }
   
 
@@ -250,12 +257,49 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
               </SheetHeader>
               <ul className="grid grid-cols-2 gap-2">
                 <li>
-                  <button className={`w-full border-4 border-white`}>
-                    <img
-                      width={resource.width}
-                      height={resource.height}
-                      src="/icon-1024x1024.png"
-                      alt="No Filter"
+                  <button className={`w-full border-4  ${!filter? 'border-white' : 'border-transparent'}`} onClick={()=> setFilter(undefined)}>
+                    <CldImageWrapper
+                      width={156}
+                      height={156}
+                      crop='fill'
+                      src={resource.public_id}
+                      alt="Orginal"
+                    />
+                  </button>
+                </li>
+                <li>
+                  <button className={`w-full border-4  ${filter === 'sepia' ? 'border-white' : 'border-transparent'}`} onClick={()=> setFilter('sepia')}>
+                    <CldImageWrapper
+                      width={156}
+                      height={156}
+                      crop='fill'
+                      sepia
+                      src={resource.public_id}
+                      alt="Sepia"
+                    />
+                  </button>
+                </li>
+                <li>
+                  <button className={`w-full border-4  ${filter === 'sizzle' ? 'border-white' : 'border-transparent'}`} onClick={()=> setFilter('sizzle')}>
+                    <CldImageWrapper
+                      width={156}
+                      height={156}
+                      crop='fill'
+                      art="sizzle"
+                      src={resource.public_id}
+                      alt="Sizzle"
+                    />
+                  </button>
+                </li>
+                <li>
+                  <button className={`w-full border-4  ${filter === 'grayscale' ? 'border-white' : 'border-transparent'}`} onClick={()=> setFilter('grayscale')}>
+                    <CldImageWrapper
+                      width={156}
+                      height={156}
+                      crop='fill'
+                      grayscale
+                      src={resource.public_id}
+                      alt="Grayscale"
                     />
                   </button>
                 </li>
