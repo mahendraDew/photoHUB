@@ -2,7 +2,7 @@
 
 import {  useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Blend, ChevronLeft, ChevronDown, Crop, Info, Pencil, Trash2, Wand2, Image, Ban, PencilRuler, ScissorsSquare, ScissorsSquareDashedBottom, Square, RectangleHorizontal, RectangleVertical, UndoIcon } from 'lucide-react';
+import { Blend, ChevronLeft, ChevronDown, Crop, Info, Pencil, Trash2, Wand2, Image, Ban, PencilRuler, ScissorsSquare, ScissorsSquareDashedBottom, Square, RectangleHorizontal, RectangleVertical, UndoIcon, Loader2 } from 'lucide-react';
 
 import Container from '@/components/Container';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -15,12 +15,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { CloudinaryResource } from '@/types/Cloudinary';
 import { CldImage, CldImageProps, getCldImageUrl } from 'next-cloudinary';
 import CldImageWrapper from '../CldImageWrapper';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface Deletion {
   state: string;
 }
 
 const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
+
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  
   const sheetFiltersRef = useRef<HTMLDivElement | null>(null);
   const sheetInfoRef = useRef<HTMLDivElement | null>(null);
 
@@ -31,6 +38,7 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
   const [deletion, setDeletion] = useState<Deletion>();
 
   // Enhancement states: 
+  const [version, setVersion] = useState<number>(1);
   const [enhancement, setEnhancement] = useState<string>();
   const [crop, setCrop] = useState<string>();
   const [filter, setFilter] = useState<string>();
@@ -77,6 +85,7 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
     transformations.art = filter;
   }
   
+  const hasTransformations = Object.entries(transformations).length > 0;
 
   // Canvas sizing based on the image dimensions. The tricky thing about
   // showing a single image in a space like this in a responsive way is trying
@@ -108,11 +117,22 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
    * closeMenus
    * @description Closes all panel menus and dialogs
    */
-
+  
   function closeMenus() {
     setFilterSheetIsOpen(false)
     setInfoSheetIsOpen(false)
     setDeletion(undefined)
+  }
+  
+  
+  /**
+   * discardChanges
+   */
+  function discardChanges(){
+    setEnhancement(undefined);
+    setFilter(undefined);
+    setCrop(undefined);
+
   }
 
   /**
@@ -147,7 +167,65 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
       })
     }).then(r => r.json());
 
+    invalidateQueries();
+
     closeMenus();
+    discardChanges();
+    setVersion(Date.now());
+  }
+  /**
+   * handleOnSaveCopy
+   */
+  async function handleOnSaveCopy(){
+    const url = getCldImageUrl({
+      width: resource.width,
+      height: resource.height,
+      src: resource.public_id,
+      format: 'default',
+      quality: 'default',
+      ...transformations
+    })
+    await fetch(url);
+    const { data } = await fetch('/api/upload', {
+      method: 'POST',
+      body: JSON.stringify({
+        url
+      })
+    }).then(r => r.json());
+
+    invalidateQueries();
+
+    router.push(`/resources/${data.asset_id}`)
+    
+  }
+  
+
+  /**
+   * handleOnDelete
+   */
+  async function handleOnDelete(){
+    if(deletion?.state === 'deleting'){
+      return;
+    }
+    setDeletion({
+      state: 'deleting'
+    })
+    await fetch('/api/delete', {
+      method: 'POST',
+      body: JSON.stringify({
+        publicId: resource.public_id
+      })
+    })
+
+    invalidateQueries();
+    router.push('/');
+  }
+
+  function invalidateQueries(){
+
+    queryClient.invalidateQueries({
+      queryKey: ['resources', String(process.env.NEXT_PUBLIC_CLOUDINARY_LIBRARY_TAG)]
+    })
   }
 
   // Listen for clicks outside of the panel area and if determined
@@ -176,14 +254,21 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
 
       {/** Modal for deletion */}
 
-      <Dialog open={!!deletion?.state} onOpenChange={handleOnDeletionOpenChange}>
+      <Dialog open={deletion && ['confirm', 'deleting'].includes(deletion.state)} onOpenChange={handleOnDeletionOpenChange}>
         <DialogContent data-exclude-close-on-click={true}>
           <DialogHeader>
             <DialogTitle className="text-center">Are you sure you want to delete?</DialogTitle>
           </DialogHeader>
           <DialogFooter className="justify-center sm:justify-center">
-            <Button variant="destructive">
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
+            <Button variant="destructive" onClick={handleOnDelete}>
+              {deletion?.state === 'deleting' && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> 
+                
+              )}
+              {deletion?.state !== 'deleting' && (
+                <Trash2 className="h-4 w-4 mr-2" /> 
+              )}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -331,6 +416,7 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
             </TabsContent>
           </Tabs>
           <SheetFooter className="gap-2 sm:flex-col">
+          {hasTransformations && (
             <div className="grid grid-cols-[1fr_4rem] gap-2">
               <Button
                 variant="ghost"
@@ -353,22 +439,27 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" data-exclude-close-on-click={true}>
                   <DropdownMenuGroup>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleOnSaveCopy}>
                       <span>Save as Copy</span>
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          )}
             <Button
               variant="outline"
-              className="w-full h-14 text-left justify-center items-center bg-transparent border-zinc-600"
-              onClick={() => closeMenus()}
+              className={`w-full h-14 text-left justify-center items-center ${hasTransformations? 'bg-red-500':'bg-transparent'} border-zinc-600`}
+              onClick={() => {
+                discardChanges();
+                closeMenus();
+              }}
             >
               <span className="text-[1.01rem]">
-                Close
+                {hasTransformations? 'Cancel' : 'Close' }
               </span>
             </Button>
+
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -445,13 +536,14 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
 
       <div className="relative flex justify-center items-center align-center w-full h-full">
         <CldImageWrapper
-          key={JSON.stringify(transformations)}
+          key={`${JSON.stringify(transformations)}-${version}`}
           className="object-contain"
           width={resource.width}
           height={resource.height}
           src={resource.public_id}
           alt={`Image ${resource.public_id}`}
           style={imgStyles}
+          version={version}
           {...transformations}
         />
       </div>
