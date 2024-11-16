@@ -14,6 +14,7 @@ import { CldImage } from 'next-cloudinary';
 import { CloudinaryResource } from '@/types/Cloudinary';
 
 import { useResources } from '@/app/hooks/use-resources';
+import CldImageWrapper from '../CldImageWrapper';
 interface MediaGalleryProps {
   resources: Array<CloudinaryResource>;
   tag?: string;
@@ -143,7 +144,7 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
                         className={`block cursor-pointer border-8 transition-[border] ${isChecked ? 'border-blue-500' : 'border-white'}`}
                         href={`/resources/${resource.asset_id}`}
                       > 
-                        <CldImage
+                        <CldImageWrapper
                           width={resource.width}
                           height={resource.height}
                           src={resource.public_id}
