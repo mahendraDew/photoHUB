@@ -1,116 +1,149 @@
-"use client";
+'use client'
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Plus, X, Save, Loader2 } from 'lucide-react';
+import { useState } from 'react'
+import Link from 'next/link'
+import { Plus, X, Save, Loader2, SquareStack, Droplet, LayoutPanelLeft } from 'lucide-react'
 
-import Container from '@/components/Container';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { CldImage, getCldImageUrl } from 'next-cloudinary';
+import Container from '@/components/Container'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog'
+import { CldImage, getCldImageUrl } from 'next-cloudinary'
 
-import { CloudinaryResource } from '@/types/Cloudinary';
+import { CloudinaryResource } from '@/types/Cloudinary'
 
-import { useResources } from '@/app/hooks/use-resources';
-import CldImageWrapper from '../CldImageWrapper';
-import { getAnimation, getCollage } from '@/lib/creations';
+import { useResources } from '@/app/hooks/use-resources'
+import CldImageWrapper from '../CldImageWrapper'
+import { getAnimation, getCollage } from '@/lib/creations'
 interface MediaGalleryProps {
-  resources: Array<CloudinaryResource>;
-  tag?: string;
+  resources: Array<CloudinaryResource>
+  tag?: string
 }
 
-interface Creation{
-  state: string;
-  url: string;
-  type: string;
+interface Creation {
+  state: string
+  url?: string
+  type: string
 }
 
-const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) => {
-
-  const { resources, addResources }  = useResources({
+const MediaGallery = ({
+  resources: initialResources,
+  tag
+}: MediaGalleryProps) => {
+  const { resources, addResources } = useResources({
     initialResources,
     tag: tag
-  });
+  })
 
-  
+  const [selected, setSelected] = useState<Array<string>>([])
+  const [creation, setCreation] = useState<Creation>()
 
-  const [selected, setSelected] = useState<Array<string>>([]);
-  const [creation, setCreation] = useState<Creation>();
-  
   /**
    * handleOnCreateCollage
    */
-  function handleOnCreateCollage(){
-    
-    const url = getCollage(selected);
+  function handleOnCreateCollage () {
+    const url = getCollage(selected)
     setCreation({
       state: 'created',
       url,
       type: 'collage'
     })
   }
-  
+
   /**
    * handleOnCreateAnimation
-  */
- function handleOnCreateAnimation(){
-   const url = getAnimation(selected);
-   console.log("animation url: ", url)
-   setCreation({
-     state: 'created',
-     url,
-     type: 'animation'
-   })
+   */
+  function handleOnCreateAnimation () {
+    const url = getAnimation(selected)
+    console.log('animation url: ', url)
+    setCreation({
+      state: 'created',
+      url,
+      type: 'animation'
+    })
   }
-  
+  /**
+   * handleOnCreateColorpop
+   */
+  async function handleOnCreateColorpop () {
+    setCreation({
+      state: 'creating',
+      url: undefined,
+      type: 'color-pop'
+    })
+
+    const { url } = await fetch('/api/creations/colorpop', {
+      method: 'POST',
+      body: JSON.stringify({
+        publicId: selected[0]
+      })
+    }).then(r => r.json())
+
+    setCreation({
+      state: 'created',
+      url,
+      type: 'color-pop'
+    })
+  }
+
   /**
    * handleOnSaveCreation Collage image save
    */
-  async function handleOnSaveCreation(){
-    if(typeof creation?.url !== 'string' || creation.state === 'saving'){
-      return;
+  async function handleOnSaveCreation () {
+    if (typeof creation?.url !== 'string' || creation.state === 'saving') {
+      return
     }
 
-    setCreation((prev)=>{
-      if(!prev) return ;
+    setCreation(prev => {
+      if (!prev) return
       return {
         ...prev,
         state: 'saving'
       }
     })
 
-    const url = creation.url;
-    await fetch(url);
+    const url = creation.url
+    await fetch(url)
     const { data } = await fetch('/api/upload', {
       method: 'POST',
       body: JSON.stringify({
         url
       })
-    }).then(r => r.json());
+    }).then(r => r.json())
 
-    addResources([data]);
-    setCreation(undefined);
-    setSelected([]);
-    
+    addResources([data])
+    setCreation(undefined)
+    setSelected([])
   }
-  
+
   /**
    * handleOnClearSelection
    */
 
-  function handleOnClearSelection() {
-    setSelected([]);
+  function handleOnClearSelection () {
+    setSelected([])
   }
 
   /**
    * handleOnCreationOpenChange
    */
 
-  function handleOnCreationOpenChange(isOpen: boolean) {
-    if ( !isOpen ) {
-      setCreation(undefined);
+  function handleOnCreationOpenChange (isOpen: boolean) {
+    if (!isOpen) {
+      setCreation(undefined)
     }
   }
 
@@ -120,72 +153,87 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
 
       <Dialog open={!!creation} onOpenChange={handleOnCreationOpenChange}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save your creation?</DialogTitle>
-          </DialogHeader>
-          {creation?.url &&(
-            <div>
-              <CldImageWrapper 
-                width={1200}
-                height={1200}
-                src={creation.url}
-                alt="creation"
-                preserveTransformations
-              />
+          {creation?.state && ['creating', 'saving'].includes(creation.state) && (
+            <div className='flex items-center justify-center p-12'>
+            <Loader2 className='h-12 w-12 animate-spin mr-2'/>
             </div>
           )}
-          <DialogFooter className="justify-end sm:justify-end">
-            <Button onClick={handleOnSaveCreation}>
-              {creation?.state === 'saving' && (
-                <Loader2 className='h-4 w-4 mr-2 animate-spin'/>
+          {creation?.state && ['created', 'saving'].includes(creation.state) && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Save your creation?</DialogTitle>
+              </DialogHeader>
+              {creation?.url && (
+                <div>
+                  <CldImageWrapper
+                    width={1200}
+                    height={1200}
+                    src={creation.url}
+                    alt='creation'
+                    preserveTransformations
+                  />
+                </div>
               )}
-              {creation?.state !== 'saving' && (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Save to Library
-            </Button>
-          </DialogFooter>
+              <DialogFooter className='justify-end sm:justify-end'>
+                <Button onClick={handleOnSaveCreation}>
+                  {/* {creation?.state === 'saving' && (
+                    <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                  )} */}
+                  {creation?.state !== 'saving' && (
+                    <Save className='h-4 w-4 mr-2' />
+                  )}
+                  Save to Library
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
       {/** Management navbar presented when assets are selected */}
 
       {selected.length > 0 && (
-        <Container className="fixed z-50 top-0 left-0 w-full h-16 flex items-center justify-between gap-4 bg-white shadow-lg">
-          <div className="flex items-center gap-4">
+        <Container className='fixed z-50 top-0 left-0 w-full h-16 flex items-center justify-between gap-4 bg-white shadow-lg'>
+          <div className='flex items-center gap-4'>
             <ul>
               <li>
-                <Button variant="ghost" onClick={handleOnClearSelection}>
-                  <X className="h-6 w-6" />
-                  <span className="sr-only">Clear Selected</span>
+                <Button variant='ghost' onClick={handleOnClearSelection}>
+                  <X className='h-6 w-6' />
+                  <span className='sr-only'>Clear Selected</span>
                 </Button>
               </li>
             </ul>
             <p>
-              <span>{ selected?.length } Selected</span>
+              <span>{selected?.length} Selected</span>
             </p>
           </div>
-          <ul className="flex items-center gap-4">
+          <ul className='flex items-center gap-4'>
             <li>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost">
-                    <Plus className="h-6 w-6" />
-                    <span className="sr-only">Create New</span>
+                  <Button variant='ghost'>
+                    <Plus className='h-6 w-6' />
+                    <span className='sr-only'>Create New</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
+                <DropdownMenuContent className='w-56'>
                   <DropdownMenuGroup>
                     {selected.length > 1 && (
-                      <DropdownMenuItem
-                      onClick={handleOnCreateCollage}>
+                      <DropdownMenuItem onClick={handleOnCreateCollage}>
+                        <LayoutPanelLeft className='h-4 w-4 mr-2'/>
                         <span>Collage</span>
                       </DropdownMenuItem>
                     )}
                     {selected.length === 1 && (
-                      <DropdownMenuItem
-                      onClick={handleOnCreateAnimation}>
+                      <DropdownMenuItem onClick={handleOnCreateAnimation}>
+                        <SquareStack className='h-4 w-4 mr-2'/>
                         <span>Animation</span>
+                      </DropdownMenuItem>
+                    )}
+                    {selected.length === 1 && (
+                      <DropdownMenuItem onClick={handleOnCreateColorpop}>
+                        <Droplet className='h-4 w-4 mr-2'/>
+                        <span>Color Pop</span>
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuGroup>
@@ -201,49 +249,62 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
       <Container>
         <form>
           {Array.isArray(resources) && (
-            <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-12">
-              {resources.map((resource) => {
-                const isChecked = selected.includes(resource.public_id);
-                const canSelectMore = selected.length < 4;
+            <ul className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-12'>
+              {resources.map(resource => {
+                const isChecked = selected.includes(resource.public_id)
+                const canSelectMore = selected.length < 4
 
-                function handleOnSelectResource(checked: boolean) {
-                  setSelected((prev) => {
-                    if ( checked ) {
-                      return Array.from(new Set([...(prev || []), resource.public_id]));
+                function handleOnSelectResource (checked: boolean) {
+                  setSelected(prev => {
+                    if (checked) {
+                      return Array.from(
+                        new Set([...(prev || []), resource.public_id])
+                      )
                     } else {
-                      return prev.filter((id) => id !== resource.public_id);
+                      return prev.filter(id => id !== resource.public_id)
                     }
-                  });
+                  })
                 }
 
                 return (
-                  <li key={resource.public_id} className="bg-white dark:bg-zinc-700">
-                    <div className="relative group">
+                  <li
+                    key={resource.public_id}
+                    className='bg-white dark:bg-zinc-700'
+                  >
+                    <div className='relative group'>
                       {canSelectMore || isChecked ? (
-                        <label className={`absolute ${isChecked ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 transition-opacity top-3 left-3 p-1`} htmlFor={resource.public_id}>
-                          <span className="sr-only">
-                            Select Image &quot;{ resource.public_id }&quot;
+                        <label
+                          className={`absolute ${
+                            isChecked ? 'opacity-100' : 'opacity-0'
+                          } group-hover:opacity-100 transition-opacity top-3 left-3 p-1`}
+                          htmlFor={resource.public_id}
+                        >
+                          <span className='sr-only'>
+                            Select Image &quot;{resource.public_id}&quot;
                           </span>
-                          
+
                           <Checkbox
-                          className={`w-6 h-6 rounded-full bg-white shadow ${isChecked ? 'border-blue-500' : 'border-zinc-200'}`}
-                          id={resource.public_id}
-                          onCheckedChange={handleOnSelectResource}
-                          checked={isChecked}
+                            className={`w-6 h-6 rounded-full bg-white shadow ${
+                              isChecked ? 'border-blue-500' : 'border-zinc-200'
+                            }`}
+                            id={resource.public_id}
+                            onCheckedChange={handleOnSelectResource}
+                            checked={isChecked}
                           />
-                        
                         </label>
-                      ): null}
+                      ) : null}
                       <Link
-                        className={`block cursor-pointer border-8 transition-[border] ${isChecked ? 'border-blue-500' : 'border-white'}`}
+                        className={`block cursor-pointer border-8 transition-[border] ${
+                          isChecked ? 'border-blue-500' : 'border-white'
+                        }`}
                         href={`/resources/${resource.asset_id}`}
-                      > 
+                      >
                         <CldImageWrapper
                           width={resource.width}
                           height={resource.height}
                           src={resource.public_id}
-                          alt="image"
-                          sizes="(min-width: 768px) 33vw, (min-width: 1024px) 25vw, (min-width: 1280px) 20vw, 50vw"
+                          alt='image'
+                          sizes='(min-width: 768px) 33vw, (min-width: 1024px) 25vw, (min-width: 1280px) 20vw, 50vw'
                         />
                       </Link>
                     </div>
@@ -254,9 +315,8 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
           )}
         </form>
       </Container>
-      
     </>
   )
 }
 
-export default MediaGallery;
+export default MediaGallery
