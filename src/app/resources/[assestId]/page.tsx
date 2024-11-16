@@ -8,7 +8,7 @@ cloudinary.config({
 })
 
 async function Resource( { params }: { params: {assestId: string}}) {
-  const {resources} = await cloudinary.api.resources_by_asset_ids(params.assestId)
+  const {resources} = await cloudinary.api.resources_by_asset_ids(params.assestId ,{tags: true});
   return (
     <MediaViewer
       resource={resources[0]}

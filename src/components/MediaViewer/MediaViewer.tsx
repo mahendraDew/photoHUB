@@ -17,6 +17,7 @@ import { CldImage, CldImageProps, getCldImageUrl } from 'next-cloudinary';
 import CldImageWrapper from '../CldImageWrapper';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { addCommas, formatBytes } from '@/lib/utils';
 
 interface Deletion {
   state: string;
@@ -481,6 +482,42 @@ const MediaViewer = ({ resource }: { resource: CloudinaryResource }) => {
                 <strong className="block text-xs font-normal text-zinc-400 mb-1">ID</strong>
                 <span className="flex gap-4 items-center text-zinc-100">
                   { resource.public_id }
+                </span>
+              </li>
+              <li className="mb-3">
+                <strong className="block text-xs font-normal text-zinc-400 mb-1">Date Created</strong>
+                <span className="flex gap-4 items-center text-zinc-100">
+                  { new Date(resource.created_at).toLocaleString() }
+                </span>
+              </li>
+              <li className="mb-3">
+                <strong className="block text-xs font-normal text-zinc-400 mb-1">Width</strong>
+                <span className="flex gap-4 items-center text-zinc-100">
+                  { addCommas(resource.width) }
+                </span>
+              </li>
+              <li className="mb-3">
+                <strong className="block text-xs font-normal text-zinc-400 mb-1">Height</strong>
+                <span className="flex gap-4 items-center text-zinc-100">
+                  { addCommas(resource.height) }
+                </span>
+              </li>
+              <li className="mb-3">
+                <strong className="block text-xs font-normal text-zinc-400 mb-1">Format</strong>
+                <span className="flex gap-4 items-center text-zinc-100">
+                  { resource.format }
+                </span>
+              </li>
+              <li className="mb-3">
+                <strong className="block text-xs font-normal text-zinc-400 mb-1">Size</strong>
+                <span className="flex gap-4 items-center text-zinc-100">
+                  { formatBytes(resource.bytes) }
+                </span>
+              </li>
+              <li className="mb-3">
+                <strong className="block text-xs font-normal text-zinc-400 mb-1">Tags</strong>
+                <span className="flex gap-4 items-center text-zinc-100">
+                  { resource.tags.join(', ') }
                 </span>
               </li>
             </ul>
