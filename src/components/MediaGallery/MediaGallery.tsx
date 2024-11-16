@@ -2,36 +2,100 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, X, Save } from 'lucide-react';
+import { Plus, X, Save, Loader2 } from 'lucide-react';
 
 import Container from '@/components/Container';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { CldImage } from 'next-cloudinary';
+import { CldImage, getCldImageUrl } from 'next-cloudinary';
 
 import { CloudinaryResource } from '@/types/Cloudinary';
 
 import { useResources } from '@/app/hooks/use-resources';
 import CldImageWrapper from '../CldImageWrapper';
+import { getAnimation, getCollage } from '@/lib/creations';
 interface MediaGalleryProps {
   resources: Array<CloudinaryResource>;
   tag?: string;
 }
 
+interface Creation{
+  state: string;
+  url: string;
+  type: string;
+}
+
 const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) => {
 
-  const { resources }  = useResources({
+  const { resources, addResources }  = useResources({
     initialResources,
     tag: tag
   });
 
-  console.log(resources);
+  
 
   const [selected, setSelected] = useState<Array<string>>([]);
-  const [creation, setCreation] = useState();
+  const [creation, setCreation] = useState<Creation>();
+  
+  /**
+   * handleOnCreateCollage
+   */
+  function handleOnCreateCollage(){
+    
+    const url = getCollage(selected);
+    setCreation({
+      state: 'created',
+      url,
+      type: 'collage'
+    })
+  }
+  
+  /**
+   * handleOnCreateAnimation
+  */
+ function handleOnCreateAnimation(){
+   const url = getAnimation(selected);
+   console.log("animation url: ", url)
+   setCreation({
+     state: 'created',
+     url,
+     type: 'animation'
+   })
+  }
+  
+  /**
+   * handleOnSaveCreation Collage image save
+   */
+  async function handleOnSaveCreation(){
+    if(typeof creation?.url !== 'string' || creation.state === 'saving'){
+      return;
+    }
 
+    setCreation((prev)=>{
+      if(!prev) return ;
+      return {
+        ...prev,
+        state: 'saving'
+      }
+    })
+
+    const url = creation.url;
+    await fetch(url);
+    const { data } = await fetch('/api/upload', {
+      method: 'POST',
+      body: JSON.stringify({
+        url
+      })
+    }).then(r => r.json());
+
+    addResources([data]);
+    setCreation(undefined);
+    setSelected([]);
+    
+  }
+  
   /**
    * handleOnClearSelection
    */
@@ -59,9 +123,25 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
           <DialogHeader>
             <DialogTitle>Save your creation?</DialogTitle>
           </DialogHeader>
+          {creation?.url &&(
+            <div>
+              <CldImageWrapper 
+                width={1200}
+                height={1200}
+                src={creation.url}
+                alt="creation"
+                preserveTransformations
+              />
+            </div>
+          )}
           <DialogFooter className="justify-end sm:justify-end">
-            <Button>
-              <Save className="h-4 w-4 mr-2" />
+            <Button onClick={handleOnSaveCreation}>
+              {creation?.state === 'saving' && (
+                <Loader2 className='h-4 w-4 mr-2 animate-spin'/>
+              )}
+              {creation?.state !== 'saving' && (
+                <Save className="h-4 w-4 mr-2" />
+              )}
               Save to Library
             </Button>
           </DialogFooter>
@@ -96,9 +176,18 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">
                   <DropdownMenuGroup>
-                    <DropdownMenuItem>
-                      <span>Option</span>
-                    </DropdownMenuItem>
+                    {selected.length > 1 && (
+                      <DropdownMenuItem
+                      onClick={handleOnCreateCollage}>
+                        <span>Collage</span>
+                      </DropdownMenuItem>
+                    )}
+                    {selected.length === 1 && (
+                      <DropdownMenuItem
+                      onClick={handleOnCreateAnimation}>
+                        <span>Animation</span>
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -115,6 +204,7 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
             <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mb-12">
               {resources.map((resource) => {
                 const isChecked = selected.includes(resource.public_id);
+                const canSelectMore = selected.length < 4;
 
                 function handleOnSelectResource(checked: boolean) {
                   setSelected((prev) => {
@@ -129,17 +219,21 @@ const MediaGallery = ({ resources: initialResources, tag }: MediaGalleryProps) =
                 return (
                   <li key={resource.public_id} className="bg-white dark:bg-zinc-700">
                     <div className="relative group">
-                      <label className={`absolute ${isChecked ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 transition-opacity top-3 left-3 p-1`} htmlFor={resource.public_id}>
-                        <span className="sr-only">
-                          Select Image &quot;{ resource.public_id }&quot;
-                        </span>
-                        <Checkbox
+                      {canSelectMore || isChecked ? (
+                        <label className={`absolute ${isChecked ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 transition-opacity top-3 left-3 p-1`} htmlFor={resource.public_id}>
+                          <span className="sr-only">
+                            Select Image &quot;{ resource.public_id }&quot;
+                          </span>
+                          
+                          <Checkbox
                           className={`w-6 h-6 rounded-full bg-white shadow ${isChecked ? 'border-blue-500' : 'border-zinc-200'}`}
                           id={resource.public_id}
                           onCheckedChange={handleOnSelectResource}
                           checked={isChecked}
-                        />
-                      </label>
+                          />
+                        
+                        </label>
+                      ): null}
                       <Link
                         className={`block cursor-pointer border-8 transition-[border] ${isChecked ? 'border-blue-500' : 'border-white'}`}
                         href={`/resources/${resource.asset_id}`}
