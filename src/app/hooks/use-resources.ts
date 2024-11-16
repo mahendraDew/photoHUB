@@ -28,7 +28,7 @@ export function useResources(options?: UseResources){
     queryClient.invalidateQueries({
       queryKey: ['resources', String(process.env.NEXT_PUBLIC_CLOUDINARY_LIBRARY_TAG)]
     })
-    console.log("results:", results)
+    // console.log("results:", results)
   }
 
   return {

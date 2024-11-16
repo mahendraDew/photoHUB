@@ -8,13 +8,13 @@ cloudinary.config({
 })
 
 export default async function Home() {
-  const {resources} = await cloudinary.api.resources_by_tag(String(process.env.NEXT_PUBLIC_CLOUDINARY_LIBRARY_TAG));
+  const {resources} = await cloudinary.api.resources_by_tag(String(process.env.NEXT_PUBLIC_CLOUDINARY_CREATION_TAG));
   console.log(resources )
   return (
     <div className="h-full mt-6">
       <MediaGallery
         resources={resources}
-        tag={String(process.env.NEXT_PUBLIC_CLOUDINARY_LIBRARY_TAG)}
+        tag={String(process.env.NEXT_PUBLIC_CLOUDINARY_CREATION_TAG)}
       />
     </div>
   )
